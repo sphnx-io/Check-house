@@ -1,0 +1,10 @@
+.env
+last_state.json
+venv/
+gmail_credentials.json
+gmail_token.json
+debug_page_dump.html
+checker.log
+__pycache__/
+*.pyc
+.playwright/
