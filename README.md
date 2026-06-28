@@ -11,7 +11,6 @@ Runs as a continuous watcher (keeps the browser session alive between checks —
 ### 1. Install dependencies (Windows, in the project virtualenv)
 
 ```powershell
-cd C:\Users\Hippo\Desktop\Project_PP\Check-house
 pip install -r requirements.txt
 playwright install chromium
 ```
