@@ -1,79 +1,99 @@
 # BSC Housing Checker
 
-Monitors the BSC member portal for available spots in preferred co-ops and sends an email (+ optional Telegram) when one opens up.
+Monitors the BSC member portal for available spots in preferred co-ops and sends a **Telegram + email** notification the moment a spot opens up.
+
+Runs as a continuous watcher (keeps the browser session alive between checks — no re-login every time).
 
 ---
 
 ## Setup
 
-### 1. Install dependencies (inside WSL)
+### 1. Install dependencies (Windows, in the project virtualenv)
 
-```bash
+```powershell
+cd C:\Users\Hippo\Desktop\Project_PP\Check-house
 pip install -r requirements.txt
 playwright install chromium
 ```
 
-### 2. Configure credentials
+### 2. Gmail API (one-time)
 
-```bash
-cp .env.example .env
+The script reads your Berkeley email via the Gmail API to retrieve the BSC temporary password when needed.
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com) → New project → `BSC Checker`
+2. APIs & Services → Library → enable **Gmail API**
+3. APIs & Services → Credentials → Create OAuth client ID → **Desktop app**
+4. Download JSON → rename to `gmail_credentials.json` → place in this folder
+5. Add your Berkeley email as a test user: OAuth consent screen → Test users
+
+```powershell
+python checker.py --setup
 ```
 
-Edit `.env` and fill in:
+A browser opens — log in with your **Berkeley account** and grant Gmail permissions. Token saved to `gmail_token.json`.
 
-| Variable | What to put |
+### 3. Configure `.env`
+
+```powershell
+copy .env.example .env
+```
+
+Edit `.env`:
+
+| Variable | Value |
 |---|---|
 | `BSC_LOGIN_URL` | `https://bsc.rms-inc.com/page/login` |
-| `BSC_USERNAME` | Your BSC username or email |
-| `GMAIL_ADDRESS` | Your Gmail address |
-| `GMAIL_APP_PASSWORD` | A Google "App Password" (16 chars, no spaces). Generate one at: myaccount.google.com → Security → 2-Step Verification → App passwords |
-| `NOTIFY_EMAIL` | Where to send alerts (can be same as Gmail) |
-| `PREFERRED_HOUSES` | Comma-separated, exact names as they appear on the BSC site |
+| `BSC_USERNAME` | Your Berkeley email (used to log in to BSC) |
+| `BSC_PASSWORD` | Leave blank first time; auto-filled after first login |
+| `GMAIL_ADDRESS` | Your Berkeley email (for Gmail API) |
+| `NOTIFY_EMAIL` | Where to send email alerts |
+| `PREFERRED_HOUSES` | Comma-separated house names (see note below) |
+| `CHECK_INTERVAL_MINUTES` | Minutes between checks (default: 25) |
+| `TELEGRAM_BOT_TOKEN` | From @BotFather on Telegram (optional) |
+| `TELEGRAM_CHAT_ID` | Your Telegram chat ID (optional) |
 
-### 3. First run — debug mode (find the login selectors)
+**House names** must match what appears in the BSC portal tree. The script uses fuzzy matching (case-insensitive, handles hyphens), so `Hillegass Parker` will match `Hillegass-Parker`.
 
-```bash
+### 4. Telegram (optional but recommended)
+
+1. Message `@BotFather` on Telegram → `/newbot` → get your token
+2. Send any message to your bot, then open:
+   `https://api.telegram.org/botTOKEN/getUpdates`
+3. Copy the `chat.id` value
+4. Add both to `.env`
+
+### 5. First run (debug mode — visible browser)
+
+```powershell
 python checker.py --debug
 ```
 
-The browser will open visibly. At each pause, use DevTools (F12) to find the correct CSS selectors for:
-- The username input field
-- The "Forgot Password" link
-- The password input field  
-- The submit/login button
-- The password-change fields (if a prompt appears after first login)
+Verify the login and navigation work. The browser is visible so you can inspect any issues.
 
-Then edit the `# SELECTORS` section at the top of `checker.py` with what you find.
+### 6. Run as continuous watcher
 
-### 4. Run headless once to validate
-
-```bash
-python checker.py
+```powershell
+python checker.py --loop
 ```
 
-Check `checker.log` to see if it completed successfully.
+Or with a custom interval:
+
+```powershell
+python checker.py --loop --interval 10
+```
+
+Stop with **Ctrl+C**.
 
 ---
 
-## Scheduling with cron (WSL)
+## How it works
 
-Open a WSL terminal and run:
-
-```bash
-crontab -e
-```
-
-Add this line to run every 25 minutes:
-
-```
-*/25 * * * * cd /mnt/c/Users/Hippo/Desktop/Project_PP/Check-house && /usr/bin/python3 checker.py >> /dev/null 2>&1
-```
-
-> **Important — WSL cron note**: WSL does not start the cron daemon automatically. Add this to your `~/.bashrc` or `~/.profile` so it starts when WSL opens:
-> ```bash
-> sudo service cron start
-> ```
-> Or use Windows Task Scheduler to launch a WSL cron-start command at boot.
+1. **Login** — tries `BSC_PASSWORD` directly; falls back to "Forgot Password" flow (fetches temp password from Berkeley email via Gmail API, changes it to a new random password, saves it to `.env`)
+2. **Navigate** — clicks "Select My Co-op for Fall" → navigates through 4 wizard steps
+3. **Scrape** — extracts `var TreeDataJSON = [...]` embedded in the page (only buildings with available spots appear)
+4. **Compare** — diffs against `last_state.json`
+5. **Notify** — sends Telegram + email if a preferred house goes from 0 → available
+6. **Sleep** — waits `CHECK_INTERVAL_MINUTES` then repeats (session stays alive)
 
 ---
 
@@ -82,19 +102,20 @@ Add this line to run every 25 minutes:
 | File | Purpose |
 |---|---|
 | `checker.py` | Main script |
-| `.env` | Your credentials (never commit this) |
-| `last_state.json` | Auto-generated — saved state from last run |
-| `checker.log` | Auto-generated — full execution log |
-| `debug_page_dump.html` | Auto-generated on error — raw page source for debugging |
+| `.env` | Your credentials — **never commit** |
+| `gmail_credentials.json` | Google OAuth app credentials — **never commit** |
+| `gmail_token.json` | Auto-generated OAuth token — **never commit** |
+| `last_state.json` | Auto-generated — availability snapshot from last run |
+| `checker.log` | Auto-generated — full execution log with timestamps |
 
 ---
 
-## How it works
+## CLI reference
 
-1. Opens the BSC login page, enters your username, clicks "Forgot Password"
-2. Polls your Gmail inbox (IMAP) for the temp-password email
-3. Logs in with the temp password, changes it to a new random one
-4. Clicks "Select My Co-op for Fall"
-5. Extracts the availability JSON embedded in the page (`var TreeDataJSON = [...]`)
-6. Compares with `last_state.json`
-7. Sends a notification if a preferred house has new available spots
+```
+python checker.py              # single run (headless)
+python checker.py --loop       # continuous watcher (recommended)
+python checker.py --loop --interval 10   # check every 10 min
+python checker.py --debug      # single run with visible browser + pauses
+python checker.py --setup      # one-time Gmail OAuth2 authorization
+```
