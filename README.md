@@ -17,19 +17,19 @@ playwright install chromium
 
 ### 2. Gmail API (one-time)
 
-The script reads your Berkeley email via the Gmail API to retrieve the BSC temporary password when needed.
+The script reads your email via the Gmail API to retrieve the BSC temporary password when needed.
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com) → New project → `BSC Checker`
 2. APIs & Services → Library → enable **Gmail API**
 3. APIs & Services → Credentials → Create OAuth client ID → **Desktop app**
 4. Download JSON → rename to `gmail_credentials.json` → place in this folder
-5. Add your Berkeley email as a test user: OAuth consent screen → Test users
+5. Add your email as a test user: OAuth consent screen → Test users
 
 ```powershell
 python checker.py --setup
 ```
 
-A browser opens — log in with your **Berkeley account** and grant Gmail permissions. Token saved to `gmail_token.json`.
+A browser opens — log in with your **account** and grant Gmail permissions. Token saved to `gmail_token.json`.
 
 ### 3. Configure `.env`
 
@@ -42,7 +42,7 @@ Edit `.env`:
 | Variable | Value |
 |---|---|
 | `BSC_LOGIN_URL` | `https://bsc.rms-inc.com/page/login` |
-| `BSC_USERNAME` | Your Berkeley email (used to log in to BSC) |
+| `BSC_USERNAME` | Your email (used to log in to BSC) |
 | `BSC_PASSWORD` | Leave blank first time; auto-filled after first login |
 | `GMAIL_ADDRESS` | Your Berkeley email (for Gmail API) |
 | `NOTIFY_EMAIL` | Where to send email alerts |
@@ -87,7 +87,7 @@ Stop with **Ctrl+C**.
 
 ## How it works
 
-1. **Login** — tries `BSC_PASSWORD` directly; falls back to "Forgot Password" flow (fetches temp password from Berkeley email via Gmail API, changes it to a new random password, saves it to `.env`)
+1. **Login** — tries `BSC_PASSWORD` directly; falls back to "Forgot Password" flow (fetches temp password from email via Gmail API, changes it to a new random password, saves it to `.env`)
 2. **Navigate** — clicks "Select My Co-op for Fall" → navigates through 4 wizard steps
 3. **Scrape** — extracts `var TreeDataJSON = [...]` embedded in the page (only buildings with available spots appear)
 4. **Compare** — diffs against `last_state.json`
