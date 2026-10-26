@@ -44,7 +44,7 @@ Edit `.env`:
 | `BSC_LOGIN_URL` | `https://bsc.rms-inc.com/page/login` |
 | `BSC_USERNAME` | Your email (used to log in to BSC) |
 | `BSC_PASSWORD` | Leave blank first time; auto-filled after first login |
-| `GMAIL_ADDRESS` | Your Berkeley email (for Gmail API) |
+| `GMAIL_ADDRESS` | Your email (for Gmail API) |
 | `NOTIFY_EMAIL` | Where to send email alerts |
 | `PREFERRED_HOUSES` | Comma-separated house names (see note below) |
 | `CHECK_INTERVAL_MINUTES` | Minutes between checks (default: 25) |
